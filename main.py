@@ -6,13 +6,15 @@ import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QComboBox, QWidget, QGridLayout, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem, QHBoxLayout
 from PyQt6.QtGui import QPixmap, QPainter, QColor, QBrush, QPen
 from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtSvgWidgets import QSvgWidget  # Import QSvgWidget to display SVG files
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
 import math
-
+from sklearn import tree
+import cairosvg  # Import cairosvg for SVG to PNG conversion
 
 class Main(QMainWindow):
     def __init__(self):
@@ -55,7 +57,6 @@ class Main(QMainWindow):
 
         # Configuración de la ventana principal
         self.setWindowTitle("Navegador de Árbol")
-        self.setGeometry(100, 100, 800, 600)  # Ajustar tamaño de la ventana
 
         # Crear el diseño principal como una cuadrícula
         self.grid_layout = QGridLayout()
@@ -80,9 +81,6 @@ class Main(QMainWindow):
         self.label_diagrama = QLabel()
         self.panel1_layout.addWidget(self.label_diagrama)
 
-        # Agregar el panel 1 al diseño de la cuadrícula
-        self.grid_layout.addWidget(self.panel1, 0, 0)  # Esquina superior izquierda
-
         # Panel 2: Diagrama de dispersión
         self.panel2 = QWidget()
         self.panel2_layout = QVBoxLayout()
@@ -91,8 +89,6 @@ class Main(QMainWindow):
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
         self.panel2_layout.addWidget(self.canvas)
-
-        self.grid_layout.addWidget(self.panel2, 0, 1)  # Esquina superior derecha
 
         # Panel 3: Pruebas de entropía (Interfaz de EntropyVisualizer)
         self.panel3 = QWidget()
@@ -131,12 +127,31 @@ class Main(QMainWindow):
         btn_layout.addWidget(self.btn_remove_pos)
 
         self.panel3_layout.addLayout(btn_layout)
-        self.grid_layout.addWidget(self.panel3, 1, 0)  # Esquina inferior izquierda
 
-        # Panel 4: Esquina inferior derecha (vacío por ahora)
-        self.panel4 = QLabel("Panel 4 (vacío)")
-        self.panel4.setStyleSheet("background-color: #f0f0f0; border: 1px solid black;")
-        self.grid_layout.addWidget(self.panel4, 1, 1)
+        # Panel 4: Display the decision tree SVG image
+        self.panel4 = QWidget()
+        self.panel4_layout = QVBoxLayout()
+        self.panel4.setLayout(self.panel4_layout)
+
+        self.label_arbol = QLabel("Árbol de Decisión (SVG Generado)")
+        self.panel4_layout.addWidget(self.label_arbol)
+
+        self.svg_widget = QLabel()
+        self.panel4_layout.addWidget(self.svg_widget)
+
+        # Agregar los paneles al diseño de la cuadrícula
+        self.grid_layout.addWidget(self.panel1, 0, 0)  # Panel 1 en la esquina superior izquierda
+        self.grid_layout.addWidget(self.panel2, 0, 1)  # Panel 2 en la esquina superior derecha
+        self.grid_layout.addWidget(self.panel3, 1, 0)  # Panel 3 en la esquina inferior izquierda
+        self.grid_layout.addWidget(self.panel4, 1, 1)  # Panel 4 en la esquina inferior derecha
+
+        # Ajustar proporciones de las filas y columnas
+        self.grid_layout.setRowStretch(0, 1)  # Primera fila ocupa 50% del espacio vertical
+        self.grid_layout.setRowStretch(1, 1)  # Segunda fila ocupa 50% del espacio vertical
+        self.grid_layout.setColumnStretch(0, 1)  # Primera columna ocupa 50% del espacio horizontal
+        self.grid_layout.setColumnStretch(1, 1)  # Segunda columna ocupa 50% del espacio horizontal
+
+        self.generar_y_mostrar_arbol_svg()
 
         # Crear un widget central para contener el diseño de la cuadrícula
         self.central_widget = QWidget()
@@ -343,6 +358,64 @@ class Main(QMainWindow):
     def salir(self):
         print("Saliendo de la aplicación...")
         self.close()
+
+    def generar_y_mostrar_arbol_svg(self):
+        try:
+            dataset = self.dfGlobal
+            print("Generated dataset:\n", dataset)
+
+            # Encode categorical variables
+            label_encoders = {}
+            for column in dataset.columns:
+                le = LabelEncoder()
+                dataset[column] = le.fit_transform(dataset[column])
+                label_encoders[column] = le
+
+            X = dataset.iloc[:, :-1]  # Features
+            y = dataset.iloc[:, -1]   # Target
+            print("Encoded X:\n", X)
+            print("Encoded y:\n", y)
+
+            # Fit the classifier with default hyper-parameters
+            print("Creando clf...")
+            clf = DecisionTreeClassifier(random_state=1234)
+            model = clf.fit(X, y)
+            print("Creando model...")
+
+            text_representation = tree.export_text(clf, feature_names=X.columns.astype(str))
+            print("Text_representation:\n", text_representation)
+
+            import dtreeviz
+            print("Creando viz...")
+            viz = dtreeviz.model(clf, X, y,
+                            target_name="target",
+                            feature_names=X.columns.astype(str),
+                            class_names=[str(cls) for cls in label_encoders[dataset.columns[-1]].classes_])
+            print("Creando V...")
+            v = viz.view()
+            print("Guardando SVG...")
+            v.save("decision_tree.svg")
+            print("SVG del árbol de decisión generado como 'decision_tree.svg'.")
+
+            # Convert SVG to PNG
+            cairosvg.svg2png(url="decision_tree.svg", write_to="decision_tree.png")
+            print("SVG convertido a PNG: 'decision_tree.png'.")
+
+            # Cargar la imagen generada en el QLabel
+            pixmap = QPixmap('decision_tree.png')
+
+            # Redimensionar la imagen para que se ajuste al ancho del panel
+            if not pixmap.isNull():
+                scaled_pixmap = pixmap.scaled(
+                    self.svg_widget.width(),  # Ancho del QLabel
+                    self.svg_widget.height(),  # Alto del QLabel
+                    aspectRatioMode=Qt.AspectRatioMode.KeepAspectRatio  # Mantener proporciones
+                )
+                self.svg_widget.setPixmap(scaled_pixmap)
+            else:
+                print("Error: No se pudo cargar la imagen del árbol.")
+        except Exception as e:
+            print(f"Error al generar o mostrar el árbol de decisión en SVG: {e}")
 
 app = QApplication(sys.argv)
 ventana = Main()

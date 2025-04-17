@@ -1,7 +1,8 @@
-# generar_dataset.py
 import pandas as pd
 import random
+#Este script genera un conjunto de datos sintético con atributos y etiquetas de clase aleatorios.
 
+#Genera un conjunto de datos con valores aleatorios para color, tamaño y etiquetas de clase.
 def generar_dataset(num_instancias=15):
     
     atributos_1 = ['Rojo', 'Verde', 'Azul', 'Amarillo', 'Naranja', 'Morado', 'Rosa', 'Marrón', 'Negro', 'Blanco', 'Gris', 'Cian', 'Turquesa', 'Magenta', 'Lima']

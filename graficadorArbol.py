@@ -1,4 +1,3 @@
-# graficador_arbol.py
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.preprocessing import LabelEncoder
 import matplotlib.pyplot as plt

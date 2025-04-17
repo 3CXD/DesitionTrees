@@ -1,12 +1,10 @@
 from generarDataset import generar_dataset
 from arbolDecision import id3
-#from navegadorArbol import navegar_arbol
 from graficadorArbol import dibujar_arbol
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QComboBox, QWidget, QGridLayout, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem, QHBoxLayout
-from PyQt6.QtGui import QPixmap, QPainter, QColor, QBrush, QPen
+from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QPushButton, QWidget, QGridLayout, QGraphicsScene, QGraphicsView, QGraphicsEllipseItem, QHBoxLayout, QScrollArea
+from PyQt6.QtGui import QPixmap, QBrush, QPen
 from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtSvgWidgets import QSvgWidget  # Import QSvgWidget to display SVG files
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from sklearn.tree import DecisionTreeClassifier
@@ -14,7 +12,7 @@ from sklearn.preprocessing import LabelEncoder
 import numpy as np
 import math
 from sklearn import tree
-import cairosvg  # Import cairosvg for SVG to PNG conversion
+import cairosvg  # Importar cairosvg para la conversión de SVG a PNG
 
 class Main(QMainWindow):
     def __init__(self):
@@ -116,7 +114,7 @@ class Main(QMainWindow):
         self.btn_add_neg.clicked.connect(lambda: self.modify_entropy("neg", 1))
         self.btn_remove_neg.clicked.connect(lambda: self.modify_entropy("neg", -1))
 
-        # Layouts
+        # Diseños
         self.panel3_layout.addWidget(self.label_info)
         self.panel3_layout.addWidget(self.view)
 
@@ -128,7 +126,7 @@ class Main(QMainWindow):
 
         self.panel3_layout.addLayout(btn_layout)
 
-        # Panel 4: Display the decision tree SVG image
+        # Panel 4: Mostrar la imagen del árbol de decisión
         self.panel4 = QWidget()
         self.panel4_layout = QVBoxLayout()
         self.panel4.setLayout(self.panel4_layout)
@@ -151,12 +149,20 @@ class Main(QMainWindow):
         self.grid_layout.setColumnStretch(0, 1)  # Primera columna ocupa 50% del espacio horizontal
         self.grid_layout.setColumnStretch(1, 1)  # Segunda columna ocupa 50% del espacio horizontal
 
+
         self.generar_y_mostrar_arbol_svg()
 
         # Crear un widget central para contener el diseño de la cuadrícula
         self.central_widget = QWidget()
         self.central_widget.setLayout(self.grid_layout)
-        self.setCentralWidget(self.central_widget)
+
+        # Crear un área de scroll y agregar el widget central
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)  # Hacer que el área de scroll sea redimensionable
+        self.scroll_area.setWidget(self.central_widget)
+
+        # Establecer el área de scroll como el widget central de la ventana principal
+        self.setCentralWidget(self.scroll_area)
 
         self.actualizar_interfaz()
         print("listo\n")
@@ -364,19 +370,19 @@ class Main(QMainWindow):
             dataset = self.dfGlobal
             print("Generated dataset:\n", dataset)
 
-            # Encode categorical variables
+            # Codificar las variables categóricas
             label_encoders = {}
             for column in dataset.columns:
                 le = LabelEncoder()
                 dataset[column] = le.fit_transform(dataset[column])
                 label_encoders[column] = le
 
-            X = dataset.iloc[:, :-1]  # Features
-            y = dataset.iloc[:, -1]   # Target
+            X = dataset.iloc[:, :-1]  # Características
+            y = dataset.iloc[:, -1]   # Etiqueta
             print("Encoded X:\n", X)
             print("Encoded y:\n", y)
 
-            # Fit the classifier with default hyper-parameters
+            # Entrenar el clasificador con hiperparámetros predeterminados
             print("Creando clf...")
             clf = DecisionTreeClassifier(random_state=1234)
             model = clf.fit(X, y)
@@ -397,7 +403,7 @@ class Main(QMainWindow):
             v.save("decision_tree.svg")
             print("SVG del árbol de decisión generado como 'decision_tree.svg'.")
 
-            # Convert SVG to PNG
+            # Convertir SVG a PNG
             cairosvg.svg2png(url="decision_tree.svg", write_to="decision_tree.png")
             print("SVG convertido a PNG: 'decision_tree.png'.")
 
